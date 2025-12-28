@@ -8,6 +8,8 @@
 
 ## 快速启动
 
+如果在云服务器上启动，请开通防火墙策略，默认端口号是 9000。
+
 **启动服务**
 
 ```bash
@@ -116,6 +118,23 @@ docker run --rm -v sonarqube_sonarqube_extensions:/target -v $(pwd):/backup alpi
    ```bash
    docker compose up -d
    ```
+
+## 问题修复
+
+在云服务器上启动时，可能会出现报错，查看 `sonarqube` 容器的错误日志：
+
+```bash
+docker logs sonarqube | grep ERROR
+```
+
+发现 ES 报错 `max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]`
+
+问题修复：
+
+```shell
+echo 'vm.max_map_count=262144' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
 
 ## 安全建议
 

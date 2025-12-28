@@ -1,0 +1,69 @@
+# 定义网络
+networks:
+  sonar_network:
+    driver: bridge
+
+# 定义数据卷
+volumes:
+  postgres_data:
+    driver: local
+  sonarqube_data:
+    driver: local
+  sonarqube_logs:
+    driver: local
+  sonarqube_extensions:
+    driver: local
+
+services:
+  # PostgreSQL数据库服务
+  postgres:
+    image: postgres:13
+    container_name: sonar_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sonar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sonar}
+      POSTGRES_DB: ${POSTGRES_DB:-sonar}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - sonar_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sonar}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SonarQube服务
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: ${SONAR_JDBC_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-sonar}}
+      SONAR_JDBC_USERNAME: ${SONAR_JDBC_USERNAME:-sonar}
+      SONAR_JDBC_PASSWORD: ${SONAR_JDBC_PASSWORD:-sonar}
+      SONAR_WEB_HOST: ${SONAR_WEB_HOST:-0.0.0.0}
+      SONAR_WEB_PORT: ${SONAR_WEB_PORT:-9000}
+      SONAR_WEB_CONTEXT: ${SONAR_WEB_CONTEXT:-/}
+      SONAR_CE_JAVA_OPTS: ${SONAR_CE_JAVA_OPTS:--Xmx512m -Xms128m}
+      SONAR_WEB_JAVA_OPTS: ${SONAR_WEB_JAVA_OPTS:--Xmx512m -Xms128m}
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - ./sonarqube/conf:/opt/sonarqube/conf
+    ports:
+      - "${SONAR_WEB_PORT:-9000}:9000"
+    networks:
+      - sonar_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SONAR_WEB_PORT:-9000}/api/system/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

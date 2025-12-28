@@ -1,0 +1,15 @@
+# IDEA 项目文件
+.idea/
+
+# 环境变量文件
+.env
+
+# 数据目录
+data/
+logs/
+extensions/
+
+
+# 临时文件
+*.tmp
+*.log
